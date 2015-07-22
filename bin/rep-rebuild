@@ -1,0 +1,200 @@
+#!/usr/bin/perl -w
+#
+# svnrebuild.pl
+#
+# $Id: rep-rebuild,v 1.1.1.1 2006/11/30 21:35:48 tillo Exp $
+#
+# Martino Dell'Ambrogio <tillo@httpdnet.com>, 2006, LGPLv2
+#
+
+use strict;
+
+use Getopt::Long qw(:config pass_through);
+
+use Term::ANSIColor;
+
+my %options = (
+	'nc' => '',
+	'd' => '',
+	'h' => '',
+	'V' => ''
+);
+
+GetOptions(
+	'nc|nocolor' => \$options{nc},
+	'd|debug'    => \$options{d},
+	'h|help'     => \$options{h},
+	'V|version'  => \$options{V}
+);
+
+my $DEBUG = 0;
+$DEBUG = 1 if $options{d};
+
+my $NOCOLOR = 0;
+$NOCOLOR = 1 if $options{nc};
+
+my $HELP = 0;
+$HELP = 1 if $options{h};
+
+my $VERSION = 0;
+$VERSION = 1 if $options{V};
+
+my $EARGV = join(" ",@ARGV);
+$EARGV =~ s/(--[^\w+])//g;
+$EARGV .= " --nocolor" if $options{nc};
+$EARGV =~ s/^\s+//;
+$EARGV =~ s/\s+$//;
+$EARGV =~ s/\s+/ /g;
+
+print color 'reset';
+print "Usage: $0 [OPTIONS] [--] [EMERGE_OPTIONS]
+
+SVN/CVS packages rebuilder.
+
+	-nc, --nocolor	Turn off colored output
+	-d,  --debug	Print debug messages
+	-h,  --help	Print help message and quit
+	-V,  --version	Print version and quit
+
+Calls emerge, all other options are used for it (e. g. -a, -av, --ask, --verbose, ...)
+" and exit(0) if $HELP;
+
+print "rep-rebuild 0.1_alpha1\n" and exit(0) if $VERSION;
+
+print color 'yellow' if ! $NOCOLOR and $DEBUG;
+print "[D] Debugging is ON\n" if $DEBUG;
+
+print color 'yellow' if ! $NOCOLOR and $DEBUG;
+print "[D] Options for the emerge call: \"" . $EARGV . "\"\n" if $DEBUG;
+
+print color 'green' unless $NOCOLOR;
+print "Retrieving SVN/CVS packages names and their SVN/CVS dependencies... ";
+
+my %progs = ();
+
+my @progNames = split(/\n/,`eix -I |grep -B2 'Installed.*:.*9999' |grep -e '^*' -e '\\[I\\]' |awk '{print \$2}'`);
+
+foreach my $progName (@progNames)
+{
+	print color 'yellow' if ! $NOCOLOR and $DEBUG;
+	print "\n[D] " . $progName . " depends on: " if $DEBUG;
+
+	my @progDeps = split(/\n/,`equery depgraph -U =$progName-9999 |egrep -- '^ \`-- .*-9999' |awk '{print \$2}' |sed 's/-9999\$//'`);
+	my @voidArray = ();
+	$progs{$progName}{progDeps_ref} = \@voidArray;
+
+	$progs{$progName}{rebuilding} = 0;
+
+	my $first = 1 if $DEBUG;
+	foreach my $progDep (@progDeps)
+	{
+		$progs{$progName}{progDeps_ref} = \@progDeps;
+		if ($DEBUG)
+		{
+			print color 'yellow' if ! $NOCOLOR and $DEBUG;
+			print ", " unless $first;
+			print color 'yellow' if ! $NOCOLOR and $DEBUG;
+			print $progDep;
+			$first = 0;
+		}
+	}
+	print color 'yellow' if ! $NOCOLOR and $DEBUG;
+	print "nothing" if $first and $DEBUG;
+}
+
+print color 'yellow' if ! $NOCOLOR and $DEBUG;
+print "\n" if $DEBUG;
+print color 'reset';
+print "done\n";
+
+print color 'green' unless $NOCOLOR;
+print "Calculating dependencies to emerge in the correct order... ";
+
+my $progsToEmerge = "";
+
+#
+# I know this is not the best algorithm... please make it do better!
+#
+
+my $somethingStillWaiting = 1;
+while ($somethingStillWaiting)
+{
+	$somethingStillWaiting = 0;
+
+	foreach my $prog (keys %progs)
+	{
+		if ($progs{$prog}{rebuilding} == 0)
+		{
+			print color 'yellow' if ! $NOCOLOR and $DEBUG;
+			print "\n[D] calculating " . $prog . ":" if $DEBUG;
+	
+			my $allDepRebuilding = 1;
+
+			my $allRedundantDeps = 1;
+			foreach my $dep (@{$progs{$prog}{progDeps_ref}})
+			{
+				print color 'yellow' if ! $NOCOLOR and $DEBUG;
+				print " " . $dep . "=" . $progs{$dep}{rebuilding} . ";" if $DEBUG;
+
+				if ($progs{$dep}{rebuilding} == 0)
+				{
+					#
+					# DIRTY HACK! This fixes only *direct* redundant dependencies... please make it do better!
+					#
+
+					my $redundantDep = 0;
+					foreach my $depDep (@{$progs{$dep}{progDeps_ref}})
+					{
+						$redundantDep = 1 if $depDep eq $prog;
+					}
+
+					if ($redundantDep == 0)
+					{
+						$allRedundantDeps = 0;
+					}
+
+					$allDepRebuilding = 0;
+				}
+			}
+			
+			if ($allDepRebuilding or $allRedundantDeps)
+			{
+				$progsToEmerge .= " " . $prog;
+				$progs{$prog}{rebuilding} = 1;
+				print color 'yellow' if ! $NOCOLOR and $DEBUG;
+				print " REBUILDING" if $DEBUG;
+			}
+			else
+			{
+				$somethingStillWaiting = 1;
+				print color 'yellow' if ! $NOCOLOR and $DEBUG;
+				print " WAITING" if $DEBUG;
+			}
+
+			print color 'red' if ! $NOCOLOR and $DEBUG;
+			print "\n[D] WARNING: rebuilding only because all remaining dependencies are directly redundant!" if ! $allDepRebuilding and $allRedundantDeps and $DEBUG;
+		}
+	}
+}
+
+print color 'yellow' if ! $NOCOLOR and $DEBUG;
+print "\n" if $DEBUG;
+print color 'reset';
+print "done\n";
+
+if ($progsToEmerge eq "")
+{
+	print color 'reset';
+	print "\nNothing to emerge\n";
+}
+else
+{
+	print color 'green' unless $NOCOLOR;
+	print "\nEmerging:";
+	print color 'reset';
+	print $progsToEmerge . "\n";
+
+	system("emerge " . $EARGV . $progsToEmerge) and exit 1;
+}
+
+exit 0;

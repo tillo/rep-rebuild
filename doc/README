@@ -1,0 +1,60 @@
+rep-rebuild(1)                                                  rep-rebuild(1)
+
+
+
+NAME
+       rep-rebuild - Gentoo: SVN/CVS packages rebuilder
+
+SYNOPSIS
+       rep-rebuild [OPTIONS] [--] [EMERGE OPTIONS]
+
+DESCRIPTION
+       Perl  script  to  rebuild  Gentoo's Portage SVN/CVS installed packages,
+       taking care of dependencies and emerge ordering.
+
+       Gentoo Portage doesn't care about an SVN/CVS package's repository being
+       updated,  and everyone needs to check manually when a package's reposi-
+       tory has been updated, check the dependencies and rebuild manually  all
+       the packages in the right order.
+
+       This  program  will  avoid the second task. In a future release it will
+       probably check if a new SVN/CVS revision is there before emerging.
+
+       It is inspired to revdep-rebuild from Gentoo's portage utilities.
+
+OPTIONS
+       -nc | --nocolor
+              turn off colored output (this  option  is  also  passed  to  the
+              emerge command)
+
+       -d | --debug
+              print  debug  messages  about  packages, their dependencies, and
+              follow the dependencies algotithm (all in realtime)
+
+       -h | --help
+              print help message and quit
+
+       -V | --version
+              print version and quit
+
+              All other options are passed to the emerge command
+
+EXAMPLES
+       It  is  recommended  to  use  the  following   command   when   running
+       rep-rebuild:
+
+       rep-rebuild --ask
+
+EXIT STATUS
+       rep-rebuild  returns  a  zero  exit status if it succeeds.  Non zero is
+       returned in case of failure.
+
+BUGS
+       Report bugs to "Martino Dell'Ambrogio" <tillo@tillo.ch>.
+
+SEE ALSO
+       emerge(1), portage(5)
+
+
+
+rep-rebuild 0.1_alpha1                                          rep-rebuild(1)
