@@ -1,15 +1,15 @@
 #!/usr/bin/perl -w
 #
-# svnrebuild.pl
+# rep-rebuild 0.1_alpha3
 #
-# $Id: rep-rebuild,v 1.2 2006/12/01 13:01:52 tillo Exp $
+# $Id: rep-rebuild,v 1.6 2006/12/04 19:58:31 tillo Exp $
 #
 # Martino Dell'Ambrogio <tillo@httpdnet.com>, 2006, LGPLv2
 #
 
 use strict;
 
-use Getopt::Long qw(:config pass_through);
+use Getopt::Long qw(:config no_auto_abbrev no_ignore_case pass_through);
 use Term::ANSIColor;
 use PortageXS;
 
@@ -41,6 +41,7 @@ $VERSION = 1 if $options{V};
 
 my $EARGV = join(" ",@ARGV);
 $EARGV =~ s/(--[^\w+])//g;
+$EARGV .= " --oneshot";
 $EARGV .= " --nocolor" if $options{nc};
 $EARGV =~ s/^\s+//;
 $EARGV =~ s/\s+$//;
@@ -59,7 +60,7 @@ SVN/CVS packages rebuilder.
 Calls emerge, all other options are used for it (e. g. -a, -av, --ask, --verbose, ...)
 " and exit(0) if $HELP;
 
-print "rep-rebuild 0.1_alpha2\n" and exit(0) if $VERSION;
+print "rep-rebuild 0.1_alpha3\n" and exit(0) if $VERSION;
 
 print color 'yellow' if ! $NOCOLOR and $DEBUG;
 print "[D] Debugging is ON\n" if $DEBUG;
@@ -81,7 +82,7 @@ foreach my $progName (@progNames)
 	print color 'yellow' if ! $NOCOLOR and $DEBUG;
 	print "\n[D] " . $progName . " depends on: " if $DEBUG;
 
-	my @progDeps = split(/\n/,`equery depgraph -U =$progName |egrep -- '^ \`-- .*-9999' |awk '{print \$2}'`);
+	my @progDeps = split(/\n/,`equery -qc depgraph -U =$progName |egrep -- '^ \`-- .*-9999' |awk '{print \$2}'`);
 	my @voidArray = ();
 	$progs{$progName}{progDeps_ref} = \@voidArray;
 

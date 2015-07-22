@@ -37,7 +37,8 @@ OPTIONS
        -V | --version
               print version and quit
 
-              All other options are passed to the emerge command
+              All  other  options are passed to the emerge command. By the way
+              "--oneshot" is passed to it whatever happens.
 
 EXAMPLES
        It  is  recommended  to  use  the  following   command   when   running
@@ -57,4 +58,4 @@ SEE ALSO
 
 
 
-rep-rebuild 0.1_alpha2                                          rep-rebuild(1)
+rep-rebuild 0.1_alpha3                                          rep-rebuild(1)
